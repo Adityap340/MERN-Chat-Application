@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
+const ws = require('ws');
 
 dotenv.config();
 mongoose.connect(process.env.MONGO_URL);
@@ -90,4 +91,31 @@ app.post('/register', async (req, res) => {
         res.status(500).json('error');
     }
 });
-app.listen(4000);
+
+const server = app.listen(4000);
+
+const wss = new ws.WebSocketServer({server})
+
+wss.on('connection', (connection, req) =>{
+    const cookies = req.headers.cookie;
+    if(cookies){
+        const tokenCookieString = cookies.split(';').find(str => str.startsWith('token='));
+        if(tokenCookieString){
+            const token = tokenCookieString.split('=')[1];
+            jwt.verify(token, jwtSecret, {}, (err, payload) => {
+                if (err) return res.status(401).json({
+                    message: 'Unauthorized'
+                });
+                const {userId, username} = payload;
+                connection.userId = userId;
+                connection.username = username;
+            });
+        }
+    }
+
+    [...wss.clients].forEach(client=>{
+        client.send(JSON.stringify({
+            online: [...wss.clients].map(c => ({userId: c.userId,username: c.username
+        }))
+    }))});
+});
