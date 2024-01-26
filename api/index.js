@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
+const Message = require('./models/Message');
 const ws = require('ws');
 
 dotenv.config();
@@ -94,42 +95,62 @@ app.post('/register', async (req, res) => {
 
 const server = app.listen(4000);
 
-const wss = new ws.WebSocketServer({server})
+const wss = new ws.WebSocketServer({
+    server
+})
 
 //read username and id from cookie for ws connection
-wss.on('connection', (connection, req) =>{
+wss.on('connection', (connection, req) => {
     const cookies = req.headers.cookie;
-    if(cookies){
+    if (cookies) {
         const tokenCookieString = cookies.split(';').find(str => str.startsWith('token='));
-        if(tokenCookieString){
+        if (tokenCookieString) {
             const token = tokenCookieString.split('=')[1];
             jwt.verify(token, jwtSecret, {}, (err, payload) => {
                 if (err) return res.status(401).json({
                     message: 'Unauthorized'
                 });
-                const {userId, username} = payload;
+                const {
+                    userId,
+                    username
+                } = payload;
                 connection.userId = userId;
                 connection.username = username;
             });
         }
     }
 
-    connection.on('message', (message) => {
+    connection.on('message', async (message) => {
         messageData = JSON.parse(message.toString());
-        const {recipient, text} = messageData;
-        if(recipient && text){
+        const {
+            recipient,
+            text
+        } = messageData;
+        if (recipient && text) {
+            const messageDocument = await Message.create({
+                sender: connection.userId,
+                recipient,
+                text,
+            });
             [...wss.clients]
             .filter(client => client.userId === recipient)
-            .forEach(client => {
-                client.send(JSON.stringify({text}))
-            })
+                .forEach(client => {
+                    client.send(JSON.stringify({
+                        text,
+                        sender: connection.userId,
+                        id: messageDocument._id,
+                    }))
+                })
         }
     });
 
-//notificition about online people or when someone connects to the socket
-    [...wss.clients].forEach(client=>{
+    //notificition about online people or when someone connects to the socket
+    [...wss.clients].forEach(client => {
         client.send(JSON.stringify({
-            online: [...wss.clients].map(c => ({userId: c.userId,username: c.username
+            online: [...wss.clients].map(c => ({
+                userId: c.userId,
+                username: c.username
+            }))
         }))
-    }))});
+    });
 });
