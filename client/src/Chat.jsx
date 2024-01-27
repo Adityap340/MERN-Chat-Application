@@ -32,7 +32,7 @@ const Chat = () => {
     if ('online' in messageData) {
       showOnLinePeople(messageData.online)
     } else if ('text' in messageData){
-      setMessages(prev => ([...prev, { isOur: false, text: messageData.text }]));
+      setMessages(prev => ([...prev, {sender:id, isOur: false, text: messageData.text }]));
     }
   }
   function sendMessage(e) {
@@ -77,7 +77,11 @@ const Chat = () => {
           {!!selectedUserId && (
             <div>
               {messagesWithoutDupes.map(message => (
-                <div key={message.id}>{message.text}</div>
+                <div key={message.id}>
+                  sender:{message.sender}<br />
+                  my id: {id}<br />
+                  {message.text}
+                </div>
               ))}
             </div>
           )}
