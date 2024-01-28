@@ -15,10 +15,6 @@ const Chat = () => {
     const newWs = new WebSocket('ws://localhost:4000');
     setWs(newWs);
     newWs.addEventListener('message', handleMessage);
-    return () => {
-      newWs.removeEventListener('message', handleMessage);
-    };
-
   }, []);
   function showOnLinePeople(peopleArray) {
     const people = {};
@@ -65,7 +61,6 @@ const Chat = () => {
             </div>
           </div>
         ))}
-
       </div>
       <div className='flex flex-col bg-blue-300 w-2/3 p-2'>
         <div className='flex-grow'>
@@ -77,7 +72,7 @@ const Chat = () => {
           {!!selectedUserId && (
             <div>
               {messagesWithoutDupes.map(message => (
-                <div key={message.id}>
+                <div key={message.id} className={message.sender === id ? 'bg-blue-500 text-white' : 'bg-white text-blue-500'}>
                   sender:{message.sender}<br />
                   my id: {id}<br />
                   {message.text}
