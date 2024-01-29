@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react';
 import { uniqBy } from 'lodash';
 import Avatar from './Avatar';
 import Logo from './Logo';
@@ -11,40 +11,57 @@ const Chat = () => {
   const { username, id } = useContext(UserContext);
   const [newMessageText, setNewMessageText] = useState('');
   const [messages, setMessages] = useState([]);
+
   useEffect(() => {
     const newWs = new WebSocket('ws://localhost:4000');
     setWs(newWs);
     newWs.addEventListener('message', handleMessage);
   }, []);
-  function showOnLinePeople(peopleArray) {
+
+  function showOnlinePeople(peopleArray) {
     const people = {};
     peopleArray.forEach(({ userId, username }) => {
       people[userId] = username;
     });
     setOnlinePeople(people);
   }
+
   function handleMessage(e) {
     const messageData = JSON.parse(e.data);
     if ('online' in messageData) {
-      showOnLinePeople(messageData.online)
+      showOnlinePeople(messageData.online);
     } else if ('text' in messageData){
-      setMessages(prev => ([...prev, {sender:id, isOur: false, text: messageData.text }]));
+      const newMessage = {
+        id: Date.now(), // Unique identifier for the message
+        sender: messageData.sender,
+        text: messageData.text
+      };
+      setMessages(prev => ([...prev, newMessage]));
     }
   }
+
   function sendMessage(e) {
     e.preventDefault();
+    if (!selectedUserId || !newMessageText.trim()) return;
+    const newMessage = {
+      id: Date.now(), // Unique identifier for the message
+      sender: id, // Assuming the current user sends the message
+      text: newMessageText,
+      isOur: true // Marking it as our message
+    };
+    setMessages(prevMessages => [...prevMessages, newMessage]); // Add the message to the sender's local state
     ws.send(JSON.stringify({
       recipient: selectedUserId,
       text: newMessageText,
     }));
     setNewMessageText('');
-    setMessages(prev => ([...prev, { text: newMessageText, isOur: true }]));
   };
+  
 
   const onlinePeopleExcOurUser = { ...onlinePeople };
   delete onlinePeopleExcOurUser[id];
 
-  const messagesWithoutDupes = uniqBy(messages, 'id')
+  const messagesWithoutDupes = uniqBy(messages, 'id');
 
   return (
     <div className='flex h-screen'>
@@ -66,7 +83,7 @@ const Chat = () => {
         <div className='flex-grow'>
           {!selectedUserId && (
             <div className='flex items-center h-full justify-center'>
-              <div className='text-gray-600'>&larr;Selecte a user</div>
+              <div className='text-gray-600'>&larr;Select a user</div>
             </div>
           )}
           {!!selectedUserId && (
@@ -103,4 +120,4 @@ const Chat = () => {
   )
 }
 
-export default Chat
+export default Chat;
